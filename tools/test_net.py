@@ -7,6 +7,7 @@ import os
 import pickle
 import numpy as np
 import torch
+import pdb
 
 import slowfast.utils.checkpoint as cu
 import slowfast.utils.distributed as du
@@ -59,6 +60,7 @@ def perform_test(test_loader, model, test_meter, cfg):
 
         # Perform the forward pass.
         #print(inputs[0,:,0,0])
+        #pdb.set_trace()
         preds = model(inputs)
 
         # Gather all the predictions across all the devices to perform ensemble.

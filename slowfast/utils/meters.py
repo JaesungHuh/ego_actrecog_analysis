@@ -145,3 +145,101 @@ class EPICTestMeter(object):
         return (self.verb_video_preds.numpy().copy(), self.noun_video_preds.numpy().copy()), \
                (self.verb_video_labels.numpy().copy(), self.noun_video_labels.numpy().copy()), \
                self.metadata.copy()
+
+
+class EPICTestFeatureMeter(object):
+    """
+    Perform the multi-view ensemble for testing: each video with an unique index
+    will be sampled with multiple clips, and the predictions of the clips will
+    be aggregated to produce the final prediction for the video.
+    The accuracy is calculated with the given ground truth labels.
+    """
+
+    def __init__(self, num_videos, num_clips, overall_iters):
+        """
+        Construct tensors to store the predictions and labels. Expect to get
+        num_clips predictions from each video, and calculate the metrics on
+        num_videos videos.
+        Args:
+            num_videos (int): number of videos to test.
+            num_clips (int): number of clips sampled from each video for
+                aggregating the final prediction for the video.
+            num_cls (int): number of classes for each prediction.
+            overall_iters (int): overall iterations for testing.
+        """
+
+        self.iter_timer = Timer()
+        self.num_clips = num_clips
+        self.overall_iters = overall_iters
+        self.features = torch.zeros(num_videos, self.num_clips, 1024)
+        self.metadata = np.zeros(num_videos, dtype=object)
+        self.clip_count = torch.zeros((num_videos)).long()
+
+        # Reset metric.
+        self.reset()
+
+    def reset(self):
+        """
+        Reset the metric.
+        """
+        self.clip_count.zero_()
+        self.features.zero_()
+        self.metadata.fill(0)
+
+    def update_stats(self, preds, metadata, clip_ids):
+        """
+        Collect the predictions from the current batch and perform on-the-flight
+        summation as ensemble.
+        Args:
+            preds (tensor): predictions from the current batch. Dimension is
+                N x C where N is the batch size and C is the channel size
+                (num_cls).
+            labels (tensor): the corresponding labels of the current batch.
+                Dimension is N.
+            clip_ids (tensor): clip indexes of the current batch, dimension is
+                N.
+        """
+        for ind in range(preds.shape[0]):
+            vid_id = int(clip_ids[ind]) // self.num_clips
+            clip_id = int(clip_ids[ind]) % self.num_clips
+            self.features[vid_id, clip_id] = preds[ind]
+            self.metadata[vid_id] = metadata['narration_id'][ind]
+            self.clip_count[vid_id] += 1
+
+    def log_iter_stats(self, cur_iter):
+        """
+        Log the stats.
+        Args:
+            cur_iter (int): the current iteration of testing.
+        """
+        eta_sec = self.iter_timer.seconds() * (self.overall_iters - cur_iter)
+        eta = str(datetime.timedelta(seconds=int(eta_sec)))
+        stats = {
+            "split": "test_iter",
+            "cur_iter": "{}".format(cur_iter + 1),
+            "eta": eta,
+            "time_diff": self.iter_timer.seconds(),
+        }
+        logging.log_json_stats(stats)
+
+    def iter_tic(self):
+        self.iter_timer.reset()
+
+    def iter_toc(self):
+        self.iter_timer.pause()
+
+    def finalize_metrics(self, ks=(1, 5), inside_action_bounds=''):
+        """
+        Calculate and log the final ensembled metrics.
+        ks (tuple): list of top-k values for topk_accuracies. For example,
+            ks = (1, 5) correspods to top-1 and top-5 accuracy.
+        """
+        if not all(self.clip_count == self.num_clips):
+            logger.warning(
+                "clip count {} ~= num clips {}".format(
+                    self.clip_count, self.num_clips
+                )
+            )
+            logger.warning(self.clip_count)
+
+        return (self.features.cpu().numpy().copy(), self.metadata.copy())

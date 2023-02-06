@@ -5,12 +5,15 @@ import torch.utils.data
 import cv2
 import numpy as np
 import datetime
+from torchvision import transforms
+import random
 
 import slowfast.utils.logging as logging
 
 from .build import DATASET_REGISTRY
 from .epickitchens_record import EpicKitchensVideoRecord, timestamp_to_sec
 
+from . import autoaugment as autoaugment
 from . import transform as transform
 from . import utils as utils
 from .frame_loader import pack_frames_to_video_clip, pack_flow_frames_to_video_clip
@@ -64,7 +67,9 @@ class Epickitchens(torch.utils.data.Dataset):
         if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'ignore':
             video_times = {}
         for file in path_annotations_pickle:
-            for tup in pd.read_pickle(file).iterrows():
+            for ii, tup in enumerate(pd.read_pickle(file).iterrows()):
+                # if ii == 100:
+                #     break
                 if not self.cfg.TEST.SLIDE.ENABLE:
                     for idx in range(self._num_clips):
                         self._video_records.append(EpicKitchensVideoRecord(tup))
@@ -208,6 +213,25 @@ class Epickitchens(torch.utils.data.Dataset):
             frames = pack_frames_to_video_clip(self.cfg, self._video_records[index], temporal_sample_index)
 
         
+        if self.cfg.DATA.USE_RAND_AUGMENT and (temporal_sample_index != 0):
+            # Transform to PIL Image
+            frames = [transforms.ToPILImage()(frame.squeeze().numpy()) for frame in frames]
+
+            # Perform RandAugment
+            img_size_min = crop_size
+            auto_augment_desc = "rand-m15-mstd0.5-inc1"
+            aa_params = dict(
+                translate_const=int(img_size_min * 0.45),
+                img_mean=tuple([min(255, round(255 * x)) for x in self.cfg.DATA.MEAN]),
+            )
+            seed = random.randint(0, 100000000)
+            frames = [autoaugment.rand_augment_transform(
+                auto_augment_desc, aa_params, seed)(frame) for frame in frames]
+
+            # To Tensor: T H W C
+            frames = [torch.tensor(np.array(frame)) for frame in frames]
+            frames = torch.stack(frames)
+      
         if self.cfg.MODEL.MODEL_NAME == 'SlowFast':
             # Perform color normalization.
             frames = frames.float()

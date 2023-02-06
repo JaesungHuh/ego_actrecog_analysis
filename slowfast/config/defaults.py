@@ -89,6 +89,13 @@ _C.TEST.SLIDE.LABEL_FRAME = 0.5
 _C.TEST.SLIDE.INSIDE_ACTION_BOUNDS = 'strict'
 
 # -----------------------------------------------------------------------------
+# FEATURE EXTRACTION OPTIONS - only for omnivore
+# -----------------------------------------------------------------------------
+_C.TEST.FEATURE_EXTRACTION = True
+
+_C.TEST.OUTPUT_MEAT = True
+
+# -----------------------------------------------------------------------------
 # ResNet options
 # -----------------------------------------------------------------------------
 _C.RESNET = CfgNode()
@@ -336,6 +343,7 @@ _C.DATA.TEST_CROP_SIZE = 256
 
 _C.DATA.FRAME_SAMPLING = 'like slowfast'
 
+_C.DATA.USE_RAND_AUGMENT = False
 
 # ---------------------------------------------------------------------------- #
 # Misc options
@@ -429,6 +437,8 @@ _C.EPICKITCHENS.TEST_LIST = "EPIC_100_validation.pkl"
 _C.EPICKITCHENS.TEST_SPLIT = "validation"
 
 _C.EPICKITCHENS.TRAIN_PLUS_VAL = False
+
+
 
 
 def _assert_and_infer_cfg(cfg):

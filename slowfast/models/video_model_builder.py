@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torchvision
 import pandas as pd
+
 from torch.nn.init import constant_
 from torch.nn.init import normal_
 from torch.utils import model_zoo
@@ -19,6 +20,8 @@ from . import head_helper, resnet_helper, stem_helper
 from .build import MODEL_REGISTRY
 from .temporal_shift import make_temporal_shift
 from .basic_ops import ConsensusModule
+
+import pdb
 
 # Number of blocks for different stages given the model depth.
 _MODEL_STAGE_DEPTH = {50: (3, 4, 6, 3), 101: (3, 4, 23, 3)}
@@ -383,7 +386,11 @@ class SlowFast(nn.Module):
 class Omnivore(nn.Module):
     def __init__(self, cfg):
         super().__init__()
+        self.cfg = cfg
         self.omni = torch.hub.load("facebookresearch/omnivore:main", model=cfg.MODEL.ARCH)
+        if cfg.TEST.FEATURE_EXTRACTION == True:
+            # replace the last head to identity
+            self.omni.heads = nn.Identity()
         self.register_buffer('verb_matrix',self._get_output_transform_matrix('verb',cfg))
         self.register_buffer('noun_matrix',self._get_output_transform_matrix('noun',cfg))
 
@@ -416,17 +423,21 @@ class Omnivore(nn.Module):
 
 
     def forward(self, x):
-        y = self.omni(x, input_type="video")
+        if self.cfg.TEST.FEATURE_EXTRACTION == False:
+            y = self.omni(x, input_type="video")
 
-        # must relocate the following to be able to train
-        # using these matrices will also make it impossible to
-        # get topk accuracies for k>1
-        verb_noun_index = torch.argmax(y,dim=-1, keepdims=True)
-        y_hardmax = torch.zeros_like(y).scatter_(1, verb_noun_index, 1.0)
-        verb = y_hardmax @ self.verb_matrix
-        noun = y_hardmax @ self.noun_matrix
-        #verb, noun = self._omnioutput2verbnoun(y_hardmax) 
-        return [verb, noun]
+            # must relocate the following to be able to train
+            # using these matrices will also make it impossible to
+            # get topk accuracies for k>1
+            verb_noun_index = torch.argmax(y,dim=-1, keepdims=True)
+            y_hardmax = torch.zeros_like(y).scatter_(1, verb_noun_index, 1.0)
+            verb = y_hardmax @ self.verb_matrix
+            noun = y_hardmax @ self.noun_matrix
+            #verb, noun = self._omnioutput2verbnoun(y_hardmax) 
+            return [verb, noun]
+        else:
+            y = self.omni(x, input_type="video")
+            return y
 
 
 def strip_module_prefix(state_dict):

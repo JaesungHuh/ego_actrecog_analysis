@@ -11,7 +11,7 @@ import slowfast.utils.multiprocessing as mpu
 from slowfast.config.defaults import get_cfg
 
 from test_net import test
-
+from extract_features import extract_features
 
 def parse_args():
     """
@@ -43,6 +43,12 @@ def parse_args():
         help="See slowfast/config/defaults.py for all options",
         default=None,
         nargs=argparse.REMAINDER,
+    )
+    parser.add_argument(
+        "--init_method",
+        help="Initialization method, includes TCP or shared file-system",
+        default="tcp://localhost:9998",
+        type=str,
     )
     if len(sys.argv) == 1:
         parser.print_help()
@@ -80,23 +86,42 @@ def main():
     # Perform multi-clip testing.
     # ALL GPU
     if cfg.TEST.ENABLE:
-        if cfg.NUM_GPUS > 1:
-            torch.multiprocessing.spawn(
-                mpu.run,
-                nprocs=cfg.NUM_GPUS,
-                args=(
-                    cfg.NUM_GPUS,
-                    test,
-                    args.init_method,
-                    cfg.SHARD_ID,
-                    cfg.NUM_SHARDS,
-                    cfg.DIST_BACKEND,
-                    cfg,
-                ),
-                daemon=False,
-            )
+        if cfg.TEST.FEATURE_EXTRACTION:
+            if cfg.NUM_GPUS > 1:
+                torch.multiprocessing.spawn(
+                    mpu.run,
+                    nprocs=cfg.NUM_GPUS,
+                    args=(
+                        cfg.NUM_GPUS,
+                        extract_features,
+                        args.init_method,
+                        cfg.SHARD_ID,
+                        cfg.NUM_SHARDS,
+                        cfg.DIST_BACKEND,
+                        cfg,
+                    ),
+                    daemon=False,
+                )
+            else:
+                extract_features(cfg=cfg)
         else:
-            test(cfg=cfg)
+            if cfg.NUM_GPUS > 1:
+                torch.multiprocessing.spawn(
+                    mpu.run,
+                    nprocs=cfg.NUM_GPUS,
+                    args=(
+                        cfg.NUM_GPUS,
+                        test,
+                        args.init_method,
+                        cfg.SHARD_ID,
+                        cfg.NUM_SHARDS,
+                        cfg.DIST_BACKEND,
+                        cfg,
+                    ),
+                    daemon=False,
+                )
+            else:
+                test(cfg=cfg)
 
 
 if __name__ == "__main__":
