@@ -213,8 +213,8 @@ class Epickitchens(torch.utils.data.Dataset):
             frames = pack_frames_to_video_clip(self.cfg, self._video_records[index], temporal_sample_index)
 
         
-        if self.cfg.DATA.USE_RAND_AUGMENT:
-        #if self.cfg.DATA.USE_RAND_AUGMENT and (temporal_sample_index != 0):
+        #if self.cfg.DATA.USE_RAND_AUGMENT:
+        if self.cfg.DATA.USE_RAND_AUGMENT and (temporal_sample_index != 0):
             # Transform to PIL Image
             frames = [transforms.ToPILImage()(frame.squeeze().numpy()) for frame in frames]
 
