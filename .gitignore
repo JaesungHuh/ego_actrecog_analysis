@@ -87,3 +87,4 @@ ipython_config.py
 
 # pyenv
 .python-version
+temp/

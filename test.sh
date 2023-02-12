@@ -4,10 +4,11 @@
 #SBATCH --mail-user=jaesung@robots.ox.ac.uk  # Where to send mail
 #SBATCH --nodes=1                              # Node count
 #SBATCH --cpus-per-task=16                     # Number of CPU cores per task
-#SBATCH --mem=140GB                             # Job memory request
-#SBATCH --time=100:00:00                        # Time limit hrs:min:sec
-#SBATCH --gres=gpu:4                           # Requesting 1 GPUs       
-#SBATCH --output=/jmain02/home/J2AD001/wwp01/jjh26-wwp01/logs/%j.log
+#SBATCH --mem=150GB                             # Job memory request
+#SBATCH --time=24:00:00                        # Time limit hrs:min:sec
+#SBATCH --gres=gpu:8                           # Requesting 1 GPUs       
+#SBATCH --output=/jmain02/home/J2AD001/wwp01/jjh26-wwp01/logs/%A_%a.log
+#SBATCH --array=0-4
 
 module purge
 
@@ -18,7 +19,7 @@ nvidia-smi
 CONFIG_FILE=configs/EPIC-KITCHENS/OMNIVORE_feature.yaml
 #DATA_PATH=/scratch/shared/beegfs/jaesung/dataset/epic-kitchens/dataset
 ANNOTATIONS_DIR=/jmain02/home/J2AD001/wwp01/jjh26-wwp01/dataset/epic-kitchens-100-annotations
-OUTPUT_DIR=/tmp/jaesung
+OUTPUT_DIR=/raid/local_scratch/jjh26-wwp01/jaesung
 
 echo "Extracting RGB Frames..."
 cd /jmain02/home/J2AD001/wwp01/shared/data/epic-100/frames
@@ -30,18 +31,17 @@ do
     video=$(cut -d'.' -f1<<<$(basename $tar))
     folder="$OUTPUT_DIR/$person/rgb_frames/$video"
     mkdir -p $folder
-    cp $tar $folder
+    cp -ru $tar $folder
     tar -xf $folder/$tar_file -C $folder
     rm -f $folder/$tar_file
 done
 
 DATA_PATH=$OUTPUT_DIR
-TEST_LIST=frame_features/1sec/epic_frame_train_1sec_split4.pkl
-TEST_BATCH_SIZE=16
-OUTPUT_DIR=/jmain02/home/J2AD001/wwp01/jjh26-wwp01/dataset/feature_extraction/trainset4
-NUM_GPUS=4
+TEST_LIST=frame_features/1sec/epic_frame_train_1sec_split${SLURM_ARRAY_TASK_ID}.pkl
+TEST_BATCH_SIZE=24
+OUTPUT_DIR=/jmain02/home/J2AD001/wwp01/jjh26-wwp01/dataset/feature_extraction/trainset${SLURM_ARRAY_TASK_ID}_new2
+NUM_GPUS=8
 NUM_ENSEMBLE_VIEWS=3
-
 
 
 # Back to the original
