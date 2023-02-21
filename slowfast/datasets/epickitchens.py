@@ -185,7 +185,14 @@ class Epickitchens(torch.utils.data.Dataset):
                 decoded, then return the index of the video. If not, return the
                 index of the video replacement that can be decoded.
         """
-        if self.mode in ["test"]:
+        if self.mode in ["train", "val", "train+val"]:
+            # -1 indicates random sampling.
+            temporal_sample_index = -1
+            spatial_sample_index = -1
+            min_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[0]
+            max_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[1]
+            crop_size = self.cfg.DATA.TRAIN_CROP_SIZE
+        elif self.mode in ["test"]:
             temporal_sample_index = (
                 self._spatial_temporal_idx[index]
                 // self.cfg.TEST.NUM_SPATIAL_CROPS

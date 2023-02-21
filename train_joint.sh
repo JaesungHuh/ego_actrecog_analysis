@@ -84,7 +84,7 @@ source ~/.bashrc
 conda activate huh
 # export PYTHONPATH=/jmain02/home/J2AD001/wwp01/jxc31-wwp01/libs:/jmain02/home/J2AD001/wwp01/jxc31-wwp01/Time-Prompting-Embed:$PYTHONPATH
 
-WANDB_MODE=offline python run_net.py --include_ate \
+WANDB_MODE=offline python run_net.py \
         --num-gpus $NUM_GPUS \
         --video_data_path $VIDEO_DATA_PATH \
         --video_train_action_pickle $VIDEO_TRAIN_ACTION_PICKLE \
