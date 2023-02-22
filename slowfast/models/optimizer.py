@@ -67,6 +67,13 @@ def construct_optimizer(model, cfg):
             betas=(0.9, 0.999),
             weight_decay=cfg.SOLVER.WEIGHT_DECAY,
         )
+    elif cfg.SOLVER.OPTIMIZING_METHOD == "adamw":
+        return torch.optim.AdamW(
+            optim_params,
+            lr=cfg.SOLVER.BASE_LR,
+            betas=(0.9, 0.999),
+            weight_decay=cfg.SOLVER.WEIGHT_DECAY,
+        )
     else:
         raise NotImplementedError(
             "Does not support {} optimizer".format(cfg.SOLVER.OPTIMIZING_METHOD)

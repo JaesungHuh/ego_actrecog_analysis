@@ -48,8 +48,9 @@ class EpicKitchensVideoRecord(VideoRecord):
 
     @property
     def label(self):
-        return {'verb': self._series['verb_class'] if 'verb_class' in self._series else -1,
-                'noun': self._series['noun_class'] if 'noun_class' in self._series else -1}
+        # return {'verb': self._series['verb_class'] if 'verb_class' in self._series else -1,
+        #         'noun': self._series['noun_class'] if 'noun_class' in self._series else -1}
+        return self._series['omnivore_action_class']
 
     @property
     def metadata(self):

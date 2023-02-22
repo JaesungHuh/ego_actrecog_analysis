@@ -33,6 +33,47 @@ _C.BN.NUM_BATCHES_PRECISE = 200
 _C.BN.WEIGHT_DECAY = 0.0
 
 # ---------------------------------------------------------------------------- #
+# Training options.
+# ---------------------------------------------------------------------------- #
+_C.TRAIN = CfgNode()
+
+# If True Train the model, else skip training.
+_C.TRAIN.ENABLE = True
+
+# Dataset.
+_C.TRAIN.DATASET = "kinetics"
+
+# Total mini-batch size.
+_C.TRAIN.BATCH_SIZE = 64
+
+# Evaluate model on test data every eval period epochs.
+_C.TRAIN.EVAL_PERIOD = 10
+
+# Save model checkpoint every checkpoint period epochs.
+_C.TRAIN.CHECKPOINT_PERIOD = 10
+
+# Resume training from the latest checkpoint in the output directory.
+_C.TRAIN.AUTO_RESUME = True
+
+# finetune
+_C.TRAIN.FINETUNE = False
+
+# Path to the checkpoint to load the initial weight.
+_C.TRAIN.CHECKPOINT_FILE_PATH = ""
+
+# Checkpoint types include `caffe2` or `pytorch`.
+_C.TRAIN.CHECKPOINT_TYPE = "pytorch"
+
+# If True, perform inflation when loading checkpoint.
+_C.TRAIN.CHECKPOINT_INFLATE = False
+
+# If True, reset epochs when loading checkpoint.
+_C.TRAIN.CHECKPOINT_EPOCH_RESET = False
+
+# If set, clear all layer names according to the pattern provided.
+_C.TRAIN.CHECKPOINT_CLEAR_NAME_PATTERN = ()  # ("backbone.",)
+
+# ---------------------------------------------------------------------------- #
 # Testing options
 # ---------------------------------------------------------------------------- #
 _C.TEST = CfgNode()
@@ -344,6 +385,140 @@ _C.DATA.TEST_CROP_SIZE = 256
 _C.DATA.FRAME_SAMPLING = 'like slowfast'
 
 _C.DATA.USE_RAND_AUGMENT = False
+
+_C.DATA.MULTI_LABEL = False
+
+# ---------------------------------------------------------------------------- #
+# Detection options.
+# ---------------------------------------------------------------------------- #
+_C.DETECTION = CfgNode()
+
+# Whether enable video detection.
+_C.DETECTION.ENABLE = False
+
+# Aligned version of RoI. More details can be found at slowfast/models/head_helper.py
+_C.DETECTION.ALIGNED = True
+
+# Spatial scale factor.
+_C.DETECTION.SPATIAL_SCALE_FACTOR = 16
+
+# RoI tranformation resolution.
+_C.DETECTION.ROI_XFORM_RESOLUTION = 7
+
+
+# ---------------------------------------------------------------------------- #
+# Multigrid training options
+# See https://arxiv.org/abs/1912.00998 for details about multigrid training.
+# ---------------------------------------------------------------------------- #
+_C.MULTIGRID = CfgNode()
+
+# Multigrid training allows us to train for more epochs with fewer iterations.
+# This hyperparameter specifies how many times more epochs to train.
+# The default setting in paper trains for 1.5x more epochs than baseline.
+_C.MULTIGRID.EPOCH_FACTOR = 1.5
+
+# Enable short cycles.
+_C.MULTIGRID.SHORT_CYCLE = False
+# Short cycle additional spatial dimensions relative to the default crop size.
+_C.MULTIGRID.SHORT_CYCLE_FACTORS = [0.5, 0.5 ** 0.5]
+
+_C.MULTIGRID.LONG_CYCLE = False
+# (Temporal, Spatial) dimensions relative to the default shape.
+_C.MULTIGRID.LONG_CYCLE_FACTORS = [
+    (0.25, 0.5 ** 0.5),
+    (0.5, 0.5 ** 0.5),
+    (0.5, 1),
+    (1, 1),
+]
+
+# While a standard BN computes stats across all examples in a GPU,
+# for multigrid training we fix the number of clips to compute BN stats on.
+# See https://arxiv.org/abs/1912.00998 for details.
+_C.MULTIGRID.BN_BASE_SIZE = 8
+
+# Multigrid training epochs are not proportional to actual training time or
+# computations, so _C.TRAIN.EVAL_PERIOD leads to too frequent or rare
+# evaluation. We use a multigrid-specific rule to determine when to evaluate:
+# This hyperparameter defines how many times to evaluate a model per long
+# cycle shape.
+_C.MULTIGRID.EVAL_FREQ = 3
+
+# No need to specify; Set automatically and used as global variables.
+_C.MULTIGRID.LONG_CYCLE_SAMPLING_RATE = 0
+_C.MULTIGRID.DEFAULT_B = 0
+_C.MULTIGRID.DEFAULT_T = 0
+_C.MULTIGRID.DEFAULT_S = 0
+
+# ---------------------------------------------------------------------------- #
+# Optimizer options
+# ---------------------------------------------------------------------------- #
+_C.SOLVER = CfgNode()
+
+# Base learning rate.
+_C.SOLVER.BASE_LR = 0.1
+
+# Learning rate policy (see utils/lr_policy.py for options and examples).
+_C.SOLVER.LR_POLICY = "cosine"
+
+# Final learning rates for 'cosine' policy.
+_C.SOLVER.COSINE_END_LR = 0.0
+
+# Exponential decay factor.
+_C.SOLVER.GAMMA = 0.1
+
+# Step size for 'exp' and 'cos' policies (in epochs).
+_C.SOLVER.STEP_SIZE = 1
+
+# Steps for 'steps_' policies (in epochs).
+_C.SOLVER.STEPS = []
+
+# Learning rates for 'steps_' policies.
+_C.SOLVER.LRS = []
+
+# Maximal number of epochs.
+_C.SOLVER.MAX_EPOCH = 300
+
+# Momentum.
+_C.SOLVER.MOMENTUM = 0.9
+
+# Momentum dampening.
+_C.SOLVER.DAMPENING = 0.0
+
+# Nesterov momentum.
+_C.SOLVER.NESTEROV = True
+
+# L2 regularization.
+_C.SOLVER.WEIGHT_DECAY = 1e-4
+
+# Start the warm up from SOLVER.BASE_LR * SOLVER.WARMUP_FACTOR.
+_C.SOLVER.WARMUP_FACTOR = 0.1
+
+# Gradually warm up the SOLVER.BASE_LR over this number of epochs.
+_C.SOLVER.WARMUP_EPOCHS = 0.0
+
+# The start learning rate of the warm up.
+_C.SOLVER.WARMUP_START_LR = 0.01
+
+# Optimization method.
+_C.SOLVER.OPTIMIZING_METHOD = "sgd"
+
+# Base learning rate is linearly scaled with NUM_SHARDS.
+_C.SOLVER.BASE_LR_SCALE_NUM_SHARDS = False
+
+# Use Mixed Precision Training
+_C.SOLVER.USE_MIXED_PRECISION = False
+
+# If > 0.0, use label smoothing
+_C.SOLVER.SMOOTHING = 0.0
+
+# Clip Grad
+_C.SOLVER.CLIP_GRAD = None
+
+
+_C.WANDB = CfgNode()
+
+_C.WANDB.ENABLE = True
+
 
 # ---------------------------------------------------------------------------- #
 # Misc options

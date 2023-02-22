@@ -7,8 +7,9 @@ import numpy as np
 from scipy.stats import gmean
 import pprint
 import torch
+import torch.nn as nn
 from fvcore.nn.precise_bn import get_bn_modules, update_bn_stats
-
+import pdb
 import slowfast.models.losses as losses
 import slowfast.models.optimizer as optim
 import slowfast.utils.checkpoint as cu
@@ -18,7 +19,7 @@ import slowfast.utils.metrics as metrics
 import slowfast.utils.misc as misc
 from slowfast.datasets import loader
 from slowfast.models import build_model
-from slowfast.utils.meters import AVAMeter, TrainMeter, ValMeter, EPICTrainMeter, EPICValMeter
+from slowfast.utils.meters import TrainMeter, ValMeter, EPICTrainMeter, EPICValMeter
 
 logger = logging.get_logger(__name__)
 
@@ -55,6 +56,8 @@ def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg):
             labels = {k: v.cuda() for k, v in labels.items()}
         else:
             labels = labels.cuda()
+        
+        train_meter.data_toc()
 
         # Update the learning rate.
         lr = optim.get_epoch_lr(cur_epoch + float(cur_iter) / data_size, cfg)
@@ -76,8 +79,9 @@ def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg):
 
         if isinstance(labels, (dict,)):
             # Explicitly declare reduction to mean.
-            loss_fun = losses.get_loss_func(cfg.MODEL.LOSS_FUNC)(reduction="mean")
-
+            #loss_fun = losses.get_loss_func(cfg.MODEL.LOSS_FUNC)(reduction="mean")
+            loss_fun=nn.CrossEntropyLoss(reduction="mean", label_smoothing=0.2)
+            
             # Compute the loss.
             loss_verb = loss_fun(preds[0], labels['verb'])
             loss_noun = loss_fun(preds[1], labels['noun'])
@@ -87,7 +91,8 @@ def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg):
             misc.check_nan_losses(loss)
         else:
             # Explicitly declare reduction to mean.
-            loss_fun = losses.get_loss_func(cfg.MODEL.LOSS_FUNC)(reduction="mean")
+            #loss_fun = losses.get_loss_func(cfg.MODEL.LOSS_FUNC)(reduction="mean")
+            loss_fun=nn.CrossEntropyLoss(reduction="mean", label_smoothing=0.2)
 
             # Compute the loss.
             loss = loss_fun(preds, labels)
@@ -193,6 +198,7 @@ def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg):
                 train_meter.update_stats(
                     top1_err, top5_err, loss, lr, inputs[0].size(0) * cfg.NUM_GPUS
                 )
+
         train_meter.log_iter_stats(cur_epoch, cur_iter)
         train_meter.iter_tic()
     # Log epoch stats.
@@ -228,6 +234,8 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg):
         else:
             labels = labels.cuda()
 
+        val_meter.data_toc()
+        
         if cfg.DETECTION.ENABLE:
             for key, val in meta.items():
                 if isinstance(val, (list,)):
@@ -252,6 +260,7 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg):
             val_meter.update_stats(preds.cpu(), ori_boxes.cpu(), metadata.cpu())
         else:
             preds = model(inputs)
+
             if isinstance(labels, (dict,)):
                 # Compute the verb accuracies.
                 verb_top1_acc, verb_top5_acc = metrics.topk_accuracies(preds[0], labels['verb'], (1, 5))
@@ -291,6 +300,7 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg):
                     (verb_top5_acc, noun_top5_acc, action_top5_acc),
                     inputs[0].size(0) * cfg.NUM_GPUS
                 )
+                val_meter.iter_tic()
             else:
                 # Compute the errors.
                 num_topks_correct = metrics.topks_correct(preds, labels, (1, 5))
@@ -310,6 +320,7 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg):
                 val_meter.update_stats(
                     top1_err, top5_err, inputs[0].size(0) * cfg.NUM_GPUS
                 )
+                val_meter.iter_tic()
         val_meter.log_iter_stats(cur_epoch, cur_iter)
         val_meter.iter_tic()
     # Log epoch stats.
@@ -360,8 +371,10 @@ def train(cfg):
 
     # Build the video model and print model statistics.
     model = build_model(cfg)
-    if du.is_master_proc():
-        misc.log_model_info(model, cfg, is_train=True)
+    if cfg.MODEL.MODEL_NAME == 'SlowFast':
+        misc.log_model_info(model, cfg, is_train=False)
+        # TODO: make it work with Omnivore and TSM
+
 
     if cfg.BN.FREEZE:
         model.module.freeze_fn('bn_parameters') if cfg.NUM_GPUS > 1 else model.freeze_fn('bn_parameters')
@@ -388,17 +401,6 @@ def train(cfg):
             convert_from_caffe2=cfg.TRAIN.CHECKPOINT_TYPE == "caffe2",
         )
         start_epoch = checkpoint_epoch + 1
-    elif cfg.TRAIN.CHECKPOINT_FILE_PATH != "" and cfg.TRAIN.FINETUNE:
-        logger.info("Load from given checkpoint file. Finetuning.")
-        _ = cu.load_checkpoint(
-            cfg.TRAIN.CHECKPOINT_FILE_PATH,
-            model,
-            cfg.NUM_GPUS > 1,
-            optimizer,
-            inflation=cfg.TRAIN.CHECKPOINT_INFLATE,
-            convert_from_caffe2=cfg.TRAIN.CHECKPOINT_TYPE == "caffe2",
-        )
-        start_epoch = 0
     else:
         start_epoch = 0
 
@@ -411,16 +413,19 @@ def train(cfg):
         val_loader = loader.construct_loader(cfg, "val")
 
     # Create meters.
-    if cfg.DETECTION.ENABLE:
-        train_meter = AVAMeter(len(train_loader), cfg, mode="train")
-        val_meter = AVAMeter(len(val_loader), cfg, mode="val")
-    else:
-        if cfg.TRAIN.DATASET == 'epickitchens':
-            train_meter = EPICTrainMeter(len(train_loader), cfg)
-            val_meter = EPICValMeter(len(val_loader), cfg)
-        else:
-            train_meter = TrainMeter(len(train_loader), cfg)
-            val_meter = ValMeter(len(val_loader), cfg)
+    # if cfg.DETECTION.ENABLE:
+    #     train_meter = AVAMeter(len(train_loader), cfg, mode="train")
+    #     val_meter = AVAMeter(len(val_loader), cfg, mode="val")
+    # else:
+    #     if cfg.TRAIN.DATASET == 'epickitchens':
+    #         train_meter = EPICTrainMeter(len(train_loader), cfg)
+    #         val_meter = EPICValMeter(len(val_loader), cfg)
+    #     else:
+    #         train_meter = TrainMeter(len(train_loader), cfg)
+    #         val_meter = ValMeter(len(val_loader), cfg)
+
+    train_meter = TrainMeter(len(train_loader), cfg)
+    val_meter = ValMeter(len(val_loader), cfg)
 
     # Perform the training loop.
     logger.info("Start epoch: {}".format(start_epoch + 1))

@@ -391,6 +391,9 @@ class Omnivore(nn.Module):
         if cfg.TEST.FEATURE_EXTRACTION == True:
             # replace the last head to identity
             self.omni.heads = nn.Identity()
+        elif cfg.TEST.FEATURE_EXTRACTION == False and cfg.TRAIN.ENABLE == True:
+            self.omni.heads = nn.ModuleDict()
+            self.omni.heads['video'] = nn.Sequential(nn.Dropout(p=0.5, inplace=False), nn.Linear(1024, 3806))
         self.register_buffer('verb_matrix',self._get_output_transform_matrix('verb',cfg))
         self.register_buffer('noun_matrix',self._get_output_transform_matrix('noun',cfg))
 
@@ -399,7 +402,6 @@ class Omnivore(nn.Module):
         with open('slowfast/models/omnivore_epic_action_classes.csv') as f:
             data = f.read().splitlines()
             action2index = {d:i for i,d in enumerate(data)}
-
 
         if which_one == 'verb':
             verb_classes = pd.read_csv(f'{cfg.EPICKITCHENS.ANNOTATIONS_DIR}/EPIC_100_verb_classes.csv',usecols=['key'])
@@ -423,7 +425,7 @@ class Omnivore(nn.Module):
 
 
     def forward(self, x):
-        if self.cfg.TEST.FEATURE_EXTRACTION == False:
+        if self.cfg.TEST.ENABLE == True and not self.cfg.TRAIN.ENABLE == False:
             y = self.omni(x, input_type="video")
 
             # must relocate the following to be able to train

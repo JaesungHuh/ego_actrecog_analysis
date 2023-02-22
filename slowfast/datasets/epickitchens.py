@@ -54,7 +54,22 @@ class Epickitchens(torch.utils.data.Dataset):
         """
         Construct the video loader.
         """
-        path_annotations_pickle = [os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.TEST_LIST)]
+        if self.mode == "train":
+            path_annotations_pickle = [
+                os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.TRAIN_LIST)]
+        elif self.mode == "val":
+            path_annotations_pickle = [
+                os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.VAL_LIST)]
+        elif self.mode == "test":
+            path_annotations_pickle = [
+                os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.TEST_LIST)]
+        else:
+            path_annotations_pickle = [
+                os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, file)
+                    for file in [self.cfg.EPICKITCHENS.TRAIN_LIST, self.cfg.EPICKITCHENS.VAL_LIST]]
+
+
+        #path_annotations_pickle = [os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.TEST_LIST)]
 
         for file in path_annotations_pickle:
             assert os.path.exists(file), "{} dir not found".format(
@@ -68,8 +83,6 @@ class Epickitchens(torch.utils.data.Dataset):
             video_times = {}
         for file in path_annotations_pickle:
             for ii, tup in enumerate(pd.read_pickle(file).iterrows()):
-                # if ii == 100:
-                #     break
                 if not self.cfg.TEST.SLIDE.ENABLE:
                     for idx in range(self._num_clips):
                         self._video_records.append(EpicKitchensVideoRecord(tup))
@@ -297,7 +310,7 @@ class Epickitchens(torch.utils.data.Dataset):
             metadata = self._video_records[index].metadata
             return input_frames, label, index, metadata
         elif self.cfg.MODEL.MODEL_NAME == 'Omnivore':
-            scale = min_scale/frames.shape[1]
+            scale = max_scale/frames.shape[1]
             frames = [
                     cv2.resize(
                         img_array.numpy(),
@@ -306,6 +319,7 @@ class Epickitchens(torch.utils.data.Dataset):
                     )
                     for img_array in frames
             ]
+
             frames = np.concatenate(
                 [np.expand_dims(img_array, axis=0) for img_array in frames],
                 axis=0,
@@ -325,6 +339,7 @@ class Epickitchens(torch.utils.data.Dataset):
                 max_scale=max_scale,
                 crop_size=crop_size,
             )
+
             label = self._video_records[index].label
             metadata = self._video_records[index].metadata
             return frames, label, index, metadata

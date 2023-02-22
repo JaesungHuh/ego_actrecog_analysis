@@ -5,6 +5,10 @@ import numpy as np
 import time
 import torch
 
+
+from . import transform as transform
+from . import samplers as samplers
+
 import cv2
 
 logger = logging.getLogger(__name__)
@@ -94,3 +98,33 @@ def pack_pathway_output(cfg, frames):
     #        )
     #    )
     return frame_list
+
+def loader_worker_init_fn(dataset):
+    """
+    Create init function passed to pytorch data loader.
+    Args:
+        dataset (torch.utils.data.Dataset): the given dataset.
+    """
+    return None
+
+def create_sampler(dataset, shuffle, cfg):
+    """
+    Create sampler for the given dataset.
+    Args:
+        dataset (torch.utils.data.Dataset): the given dataset.
+        shuffle (bool): set to ``True`` to have the data reshuffled
+            at every epoch.
+        cfg (CfgNode): configs. Details can be found in
+            slowfast/config/defaults.py
+    Returns:
+        sampler (Sampler): the created sampler.
+    """
+    if cfg.NUM_GPUS > 1:
+        if cfg.DATA.USE_REPEATED_AUG:
+            sampler = samplers.RASampler(dataset)
+        else:
+            sampler = DistributedSampler(dataset)
+    else:
+        sampler = None
+
+    return sampler

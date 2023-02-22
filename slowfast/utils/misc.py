@@ -10,6 +10,7 @@ import torch
 from fvcore.nn.flop_count import flop_count
 from matplotlib import pyplot as plt
 from torch import nn
+import psutil
 
 import slowfast.utils.logging as logging
 from slowfast.datasets.utils import pack_pathway_output
@@ -161,3 +162,27 @@ def frozen_bn_stats(model):
     for m in model.modules():
         if isinstance(m, nn.BatchNorm3d):
             m.eval()
+
+def gpu_mem_usage():
+    """
+    Compute the GPU memory usage for the current device (GB).
+    """
+    if torch.cuda.is_available():
+        mem_usage_bytes = torch.cuda.max_memory_allocated()
+    else:
+        mem_usage_bytes = 0
+    return mem_usage_bytes / 1024 ** 3
+
+
+def cpu_mem_usage():
+    """
+    Compute the system memory (RAM) usage for the current device (GB).
+    Returns:
+        usage (float): used memory (GB).
+        total (float): total memory (GB).
+    """
+    vram = psutil.virtual_memory()
+    usage = (vram.total - vram.available) / 1024 ** 3
+    total = vram.total / 1024 ** 3
+
+    return usage, total

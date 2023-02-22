@@ -10,6 +10,7 @@ import slowfast.utils.checkpoint as cu
 import slowfast.utils.multiprocessing as mpu
 from slowfast.config.defaults import get_cfg
 
+from train_net import train
 from test_net import test
 from extract_features import extract_features
 
@@ -122,6 +123,24 @@ def main():
                 )
             else:
                 test(cfg=cfg)
+    else:
+        if cfg.NUM_GPUS > 1:
+            torch.multiprocessing.spawn(
+                mpu.run,
+                nprocs=cfg.NUM_GPUS,
+                args=(
+                    cfg.NUM_GPUS,
+                    train,
+                    args.init_method,
+                    cfg.SHARD_ID,
+                    cfg.NUM_SHARDS,
+                    cfg.DIST_BACKEND,
+                    cfg,
+                ),
+                daemon=False,
+            )
+        else:
+            train(cfg=cfg)
 
 
 if __name__ == "__main__":
