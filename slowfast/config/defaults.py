@@ -340,6 +340,8 @@ _C.DATA.PATH_TO_DATA_DIR = ""
 # Video path prefix if any.
 _C.DATA.PATH_PREFIX = ""
 
+_C.DATA.USE_REPEATED_AUG = False
+
 # The spatial crop size of the input clip.
 _C.DATA.CROP_SIZE = 224
 
@@ -520,6 +522,32 @@ _C.SOLVER.CLIP_GRAD = None
 _C.WANDB = CfgNode()
 
 _C.WANDB.ENABLE = True
+
+_C.WANDB.RUN_ID = ""
+
+# ---------------------------------------------------------------------------- #
+# Mixup options
+# ---------------------------------------------------------------------------- #
+
+_C.MIXUP = CfgNode()
+
+# mixup alpha, mixup enabled if > 0. (default: 0.8)
+_C.MIXUP.MIXUP_ALPHA = 0.0
+
+# cutmix alpha, cutmix enabled if > 0. (default: 1.0)
+_C.MIXUP.CUTMIX_ALPHA = 0.0
+
+# cutmix min/max ratio, overrides alpha and enables cutmix if set (default: None)
+_C.MIXUP.CUTMIX_MINMAX = None
+
+# Probability of performing mixup or cutmix when either/both is enabled
+_C.MIXUP.MIXUP_PROB = 0.5
+
+# Probability of switching to cutmix when both mixup and cutmix enabled
+_C.MIXUP.MIXUP_SWITCH_PROB = 0.5
+
+# How to apply mixup/cutmix params. Per "batch", "pair", or "elem"
+_C.MIXUP.MIXUP_MODE = "batch"
 
 
 # ---------------------------------------------------------------------------- #

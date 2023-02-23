@@ -93,7 +93,7 @@ def is_checkpoint_epoch(cur_epoch, checkpoint_period):
     return (cur_epoch + 1) % checkpoint_period == 0
 
 
-def save_checkpoint(path_to_job, model, optimizer, epoch, cfg, is_best_epoch=False):
+def save_checkpoint(path_to_job, model, optimizer, epoch, cfg, is_best_epoch=False, loss_scaler=None):
     """
     Save a checkpoint.
     Args:
@@ -109,13 +109,24 @@ def save_checkpoint(path_to_job, model, optimizer, epoch, cfg, is_best_epoch=Fal
     os.makedirs(get_checkpoint_dir(path_to_job), exist_ok=True)
     # Omit the DDP wrapper in the multi-gpu setting.
     sd = model.module.state_dict() if cfg.NUM_GPUS > 1 else model.state_dict()
+
     # Record the state.
-    checkpoint = {
-        "epoch": epoch,
-        "model_state": sd,
-        "optimizer_state": optimizer.state_dict(),
-        "cfg": cfg.dump(),
-    }
+    if loss_scaler:
+        checkpoint = {
+            "epoch": epoch,
+            "model_state": normalized_sd,
+            "optimizer_state": optimizer.state_dict(),
+            "cfg": cfg.dump(),
+            "scaler": loss_scaler.state_dict(),
+        }
+    else:
+        checkpoint = {
+            "epoch": epoch,
+            "model_state": normalized_sd,
+            "optimizer_state": optimizer.state_dict(),
+            "cfg": cfg.dump(),
+        }
+        
     # Write the checkpoint.
     path_to_checkpoint = get_path_to_checkpoint(path_to_job, epoch + 1, is_best_epoch)
     torch.save(checkpoint, path_to_checkpoint)

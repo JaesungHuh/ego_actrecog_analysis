@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torchvision
 import pandas as pd
+import sys
 
 from torch.nn.init import constant_
 from torch.nn.init import normal_
@@ -392,8 +393,14 @@ class Omnivore(nn.Module):
             # replace the last head to identity
             self.omni.heads = nn.Identity()
         elif cfg.TEST.FEATURE_EXTRACTION == False and cfg.TRAIN.ENABLE == True:
-            self.omni.heads = nn.ModuleDict()
-            self.omni.heads['video'] = nn.Sequential(nn.Dropout(p=0.5, inplace=False), nn.Linear(1024, 3806))
+            if cfg.MODEL.ARCH == 'omnivore_swinB':
+                self.omni.heads = nn.ModuleDict()
+                self.omni.heads['video'] = nn.Sequential(nn.Dropout(p=0.5, inplace=False), nn.Linear(1024, 3806))
+            elif cfg.MODEL.ARCH == 'omnivore_swinB_epic':
+                pass
+            else:
+                print("No such architecture")
+                sys.exit(1)
         self.register_buffer('verb_matrix',self._get_output_transform_matrix('verb',cfg))
         self.register_buffer('noun_matrix',self._get_output_transform_matrix('noun',cfg))
 

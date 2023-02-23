@@ -4,8 +4,15 @@
 """Loss functions."""
 
 import torch.nn as nn
-
-_LOSSES = {"cross_entropy": nn.CrossEntropyLoss, "bce": nn.BCELoss}
+from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
+_LOSSES = {
+    "cross_entropy": nn.CrossEntropyLoss,
+    "bce": nn.BCELoss,
+    "bce_logit": nn.BCEWithLogitsLoss,
+    "label_smoothing_cross_entropy": LabelSmoothingCrossEntropy,
+    "mse_loss": nn.MSELoss,
+    "soft_target_cross_entropy": SoftTargetCrossEntropy
+}
 
 
 def get_loss_func(loss_name):
