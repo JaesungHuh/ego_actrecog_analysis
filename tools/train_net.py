@@ -28,7 +28,7 @@ import wandb
 logger = logging.get_logger(__name__)
 
 
-def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg, wandb_log=False, loss_scaler=None, mixup_fn=None):
+def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg, wandb_log=False, loss_fun=None, loss_scaler=None, mixup_fn=None):
     """
     Perform the video training for one epoch.
     Args:
@@ -50,6 +50,8 @@ def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg, wan
     data_size = len(train_loader)
 
     for cur_iter, (inputs, labels, _, meta) in enumerate(train_loader):
+        # if cur_iter == 10:
+        #     break
         # Transfer the data to the current GPU device.
         if isinstance(inputs, (list,)):
             for i in range(len(inputs)):
@@ -89,7 +91,7 @@ def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg, wan
             if isinstance(labels, (dict,)):
                 # Explicitly declare reduction to mean.
                 #loss_fun = losses.get_loss_func(cfg.MODEL.LOSS_FUNC)(reduction="mean")
-                loss_fun=nn.CrossEntropyLoss(reduction="mean", label_smoothing=0.2)
+                #loss_fun=nn.CrossEntropyLoss(reduction="mean", label_smoothing=0.2)
                 
                 # Compute the loss.
                 loss_verb = loss_fun(preds[0], labels['verb'])
@@ -101,7 +103,7 @@ def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg, wan
             else:
                 # Explicitly declare reduction to mean.
                 #loss_fun = losses.get_loss_func(cfg.MODEL.LOSS_FUNC)(reduction="mean")
-                loss_fun=nn.CrossEntropyLoss(reduction="mean", label_smoothing=0.2)
+                #loss_fun=nn.CrossEntropyLoss(reduction="mean", label_smoothing=0.2)
 
                 # Compute the loss.
                 loss = loss_fun(preds, labels)
@@ -267,6 +269,8 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, wandb_log=False):
     val_meter.iter_tic()
 
     for cur_iter, (inputs, labels, _, meta) in enumerate(val_loader):
+        # if cur_iter == 10:
+        #     break
         # Transferthe data to the current GPU device.
         if cfg.NUM_GPUS:
             if isinstance(inputs, (list,)):
@@ -348,7 +352,7 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, wandb_log=False):
                     )
                     val_meter.iter_tic()
 
-                    if wandb_log:
+                    if cfg.WANDB.ENABLE and du.is_master_proc(cfg.NUM_GPUS * cfg.NUM_SHARDS):
                         wandb.log(
                             {
                                 "Val/loss": loss,
@@ -407,8 +411,6 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, wandb_log=False):
                 {
                     "Val/epoch/Top1_err": top1_dict["top1_err"], 
                     "Val/epoch/Top5_err": top1_dict["top5_err"],
-                    "Val/epoch/mAP": top1_dict["mAP"],
-                    "Val/epoch/mAUC": top1_dict["mAUC"],
                     "epoch": cur_epoch
                 }
             )
@@ -525,9 +527,9 @@ def train(cfg):
     if cfg.WANDB.ENABLE and du.is_master_proc(cfg.NUM_GPUS * cfg.NUM_SHARDS):
         wandb_log = True
         if cfg.TRAIN.AUTO_RESUME and cfg.WANDB.RUN_ID != "":
-            wandb.init(project=cfg.MODEL.MODEL_NAME, config=cfg, sync_tensorboard=True, resume=cfg.WANDB.RUN_ID)
+            wandb.init(project=cfg.MODEL.MODEL_NAME, config=cfg, resume=cfg.WANDB.RUN_ID)
         else:
-            wandb.init(project=cfg.MODEL.MODEL_NAME, config=cfg, sync_tensorboard=True)
+            wandb.init(project=cfg.MODEL.MODEL_NAME, config=cfg)
         wandb.watch(model)
 
     else:
@@ -551,12 +553,21 @@ def train(cfg):
             num_classes=cfg.MODEL.NUM_CLASSES
         )
 
+    # Explicitly declare reduction to mean.
+    if cfg.MIXUP.MIXUP_ALPHA > 0.:
+        # smoothing is handled with mixup label transform
+        loss_fun = losses.get_loss_func("soft_target_cross_entropy")()
+    elif cfg.SOLVER.SMOOTHING > 0.0:
+        loss_fun = losses.get_loss_func("label_smoothing_cross_entropy")(
+            smoothing=cfg.SOLVER.SMOOTHING)
+    else:
+        loss_fun = losses.get_loss_func(cfg.MODEL.LOSS_FUNC)(reduction="mean")
 
     for cur_epoch in range(start_epoch, cfg.SOLVER.MAX_EPOCH):
         # Shuffle the dataset.
         loader.shuffle_dataset(train_loader, cur_epoch)
         # Train for one epoch.
-        train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg, wandb_log, loss_scaler=loss_scaler, mixup_fn=mixup_fn)
+        train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg, wandb_log, loss_fun=loss_fun, loss_scaler=loss_scaler, mixup_fn=mixup_fn)
 
         # Compute precise BN stats.
         if cfg.BN.USE_PRECISE_STATS and len(get_bn_modules(model)) > 0:

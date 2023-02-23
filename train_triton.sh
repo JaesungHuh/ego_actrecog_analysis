@@ -2,8 +2,8 @@
 #SBATCH --job-name=384_1                 # Job name
 #SBATCH --mail-user=jaesung@robots.ox.ac.uk  # Where to send mail
 #SBATCH --nodes=1                              # Node count
-#SBATCH --cpus-per-task=32                    # Number of CPU cores per task
-#SBATCH --mem=150GB                             # Job memory request
+#SBATCH --cpus-per-task=16                    # Number of CPU cores per task
+#SBATCH --mem=100GB                             # Job memory request
 #SBATCH --partition=gpu
 #SBATCH --time=150:00:00                        # Time limit hrs:min:sec
 #SBATCH --gres=gpu:4                           # Requesting 1 GPUs       
