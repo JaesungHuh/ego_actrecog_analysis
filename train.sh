@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=384_1                 # Job name
+#SBATCH --job-name=336_2                 # Job name
 #SBATCH --mail-type=ALL                        # Mail events (NONE, BEGIN, END, FAIL, ALL)
 #SBATCH --mail-user=jaesung@robots.ox.ac.uk  # Where to send mail
 #SBATCH --nodes=1                              # Node count
@@ -14,7 +14,7 @@ module purge
 # Run the application
 nvidia-smi
 
-CONFIG_FILE=configs/EPIC-KITCHENS/OMNIVORE_384.yaml
+CONFIG_FILE=configs/EPIC-KITCHENS/OMNIVORE.yaml
 ANNOTATIONS_DIR=/jmain02/home/J2AD001/wwp01/jjh26-wwp01/dataset/epic-kitchens-100-annotations
 OUTPUT_DIR=/raid/local_scratch/jjh26-wwp01/jaesung
 ROOT_FOLDER=/jmain02/home/J2AD001/wwp01/jjh26-wwp01/checkpoints
@@ -37,13 +37,13 @@ done
 DATA_PATH=${OUTPUT_DIR}
 TRAIN_LIST=EPIC_100_train_omnivore.pkl
 VAL_LIST=EPIC_100_validation_omnivore.pkl
-SAV_FOLDER="${ROOT_FOLDER}/omnivore_384_2"
+SAV_FOLDER="${ROOT_FOLDER}/omnivore_336_2"
 TRAIN_BATCH_SIZE=8
 NUM_GPUS=8
 NUM_ENSEMBLE_VIEWS=1
 LOG_PERIOD=100
 NUM_WORKERS=8
-BASE_LR=0.5e-3
+BASE_LR=1e-2
 WANDB_ENABLE=True
 dist_url="env://"
 echo $dist_url

@@ -388,6 +388,8 @@ _C.DATA.USE_RAND_AUGMENT = False
 
 _C.DATA.MULTI_LABEL = False
 
+_C.DATA.USE_REPEATED_AUG = False
+
 # ---------------------------------------------------------------------------- #
 # Detection options.
 # ---------------------------------------------------------------------------- #

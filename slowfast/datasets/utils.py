@@ -8,7 +8,7 @@ import torch
 
 from . import transform as transform
 from . import samplers as samplers
-
+from torch.utils.data.distributed import DistributedSampler
 import cv2
 
 logger = logging.getLogger(__name__)
