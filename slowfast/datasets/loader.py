@@ -127,7 +127,7 @@ def construct_loader(cfg, split, is_precise_bn=False):
                 collate_fn=detection_collate if cfg.DETECTION.ENABLE else None,
                 worker_init_fn=utils.loader_worker_init_fn(dataset),
             )
-    return loader
+
     return loader
 
 

@@ -89,3 +89,4 @@ ipython_config.py
 .python-version
 temp/
 *.yaml
+wandb/

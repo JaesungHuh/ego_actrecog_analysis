@@ -4,7 +4,7 @@ import logging
 import numpy as np
 import time
 import torch
-
+from torch.utils.data.distributed import DistributedSampler
 
 from . import transform as transform
 from . import samplers as samplers
