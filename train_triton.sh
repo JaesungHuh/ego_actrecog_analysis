@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=320                 # Job name
+#SBATCH --job-name=288                 # Job name
 #SBATCH --mail-user=jaesung@robots.ox.ac.uk  # Where to send mail
 #SBATCH --nodes=1                              # Node count
 #SBATCH --cpus-per-task=16                    # Number of CPU cores per task
@@ -19,7 +19,7 @@ nvidia-smi
 
 # For triton
 OUTPUT_DIR=/tmp/jaesung
-CONFIG_FILE=configs/EPIC-KITCHENS/OMNIVORE_320.yaml
+CONFIG_FILE=configs/EPIC-KITCHENS/OMNIVORE_288.yaml
 ANNOTATIONS_DIR=/scratch/shared/beegfs/jaesung/dataset/epic-kitchens/epic-kitchens-100-annotations
 ROOT_FOLDER=/scratch/shared/beegfs/jaesung/checkpoints/omnivore
 
@@ -41,7 +41,7 @@ done
 DATA_PATH=${OUTPUT_DIR}
 TRAIN_LIST=EPIC_100_train_omnivore.pkl
 VAL_LIST=EPIC_100_validation_omnivore.pkl
-SAV_FOLDER="${ROOT_FOLDER}/omnivore_imagenet21k_320"
+SAV_FOLDER="${ROOT_FOLDER}/omnivore_imagenet21k_288"
 TRAIN_BATCH_SIZE=2
 NUM_GPUS=2
 NUM_ENSEMBLE_VIEWS=1
