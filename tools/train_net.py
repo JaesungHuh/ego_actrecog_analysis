@@ -58,11 +58,12 @@ def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg, wan
                 inputs[i] = inputs[i].cuda(non_blocking=True)
         else:
             inputs = inputs.cuda(non_blocking=True)
-        if isinstance(labels, (dict,)):
-            labels = {k: v.cuda() for k, v in labels.items()}
-        else:
+
+        if mixup_fn is not None:
             labels = labels.cuda()
-        
+            inputs, labels = mixup_fn(inputs, labels)
+            #inputs = [inputs]. # For omnivore you need to uncomment this
+
         train_meter.data_toc()
 
         # Update the learning rate.
@@ -82,6 +83,7 @@ def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg, wan
             else:
                 # Perform the forward pass.
                 preds = model(inputs)
+
             if mixup_fn is None:
                 if isinstance(labels, (dict,)):
                     labels = {k: v.cuda() for k, v in labels.items()}
@@ -112,15 +114,21 @@ def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg, wan
                 misc.check_nan_losses(loss)
 
         # Perform the backward pass.
-        optimizer.zero_grad()
+        #optimizer.zero_grad()
         if cfg.SOLVER.USE_MIXED_PRECISION: # Mixed Precision Training
             is_second_order = hasattr(optimizer, 'is_second_order') and optimizer.is_second_order
             loss_scaler(loss, optimizer, clip_grad=cfg.SOLVER.CLIP_GRAD,
                     parameters=model.parameters(), create_graph=is_second_order)
         else:
+            if cfg.SOLVER.GRAD_ACCUMULATION_ITER > 1:
+                loss = loss / cfg.SOLVER.GRAD_ACCUMULATION_ITER
             loss.backward()
-            # Update the parameters.
-            optimizer.step()
+
+            if ((cur_iter + 1) % cfg.SOLVER.GRAD_ACCUMULATION_ITER == 0) or (cur_iter + 1 == len(train_loader)):
+                optimizer.step()
+                optimizer.zero_grad()
+            # # Update the parameters.
+            # optimizer.step()
 
         if cfg.DETECTION.ENABLE:
             if cfg.NUM_GPUS > 1:
@@ -236,9 +244,10 @@ def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg, wan
                 )
 
 
+                # Log every 1000 steps
                 if cfg.WANDB.ENABLE and du.is_master_proc(
                     cfg.NUM_GPUS * cfg.NUM_SHARDS
-                ):
+                ) and ((data_size * cur_epoch + cur_iter + 1) % 1000 == 0):
                     wandb.log(
                         {
                             "Train/loss": loss,
@@ -552,7 +561,7 @@ def train(cfg):
             switch_prob=cfg.MIXUP.MIXUP_SWITCH_PROB, 
             mode=cfg.MIXUP.MIXUP_MODE,
             label_smoothing=cfg.SOLVER.SMOOTHING, 
-            num_classes=cfg.MODEL.NUM_CLASSES
+            num_classes=cfg.MODEL.NUM_CLASSES[0]
         )
 
     # Explicitly declare reduction to mean.
@@ -579,14 +588,10 @@ def train(cfg):
 
         # Save a checkpoint.
         if cu.is_checkpoint_epoch(cur_epoch, cfg.TRAIN.CHECKPOINT_PERIOD):
-            print("Checkpoint saving start")
             cu.save_checkpoint(cfg.OUTPUT_DIR, model, optimizer, cur_epoch, cfg, loss_scaler=loss_scaler)
-            print("Checkpoint saving end")
         # Evaluate the model on validation set.
         if misc.is_eval_epoch(cfg, cur_epoch):
-            print("Evaluation start")
             is_best_epoch = eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, wandb_log)
             if is_best_epoch:
                 cu.save_checkpoint(cfg.OUTPUT_DIR, model, optimizer, cur_epoch, cfg, is_best_epoch=is_best_epoch)
-            print("Evaluation end")
 

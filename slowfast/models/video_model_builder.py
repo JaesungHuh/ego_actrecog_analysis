@@ -21,7 +21,7 @@ from . import head_helper, resnet_helper, stem_helper
 from .build import MODEL_REGISTRY
 from .temporal_shift import make_temporal_shift
 from .basic_ops import ConsensusModule
-
+from .omnivore_model import omnivore_swinB_imagenet21k_288, omnivore_swinB_imagenet21k_320
 import pdb
 
 # Number of blocks for different stages given the model depth.
@@ -388,16 +388,15 @@ class Omnivore(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.cfg = cfg
-        self.omni = torch.hub.load("facebookresearch/omnivore:main", model=cfg.MODEL.ARCH)
         if cfg.TEST.FEATURE_EXTRACTION == True:
             # replace the last head to identity
+            self.omni = torch.hub.load("facebookresearch/omnivore:main", model=cfg.MODEL.ARCH)
             self.omni.heads = nn.Identity()
         elif cfg.TEST.FEATURE_EXTRACTION == False and cfg.TRAIN.ENABLE == True:
-            if cfg.MODEL.ARCH == 'omnivore_swinB':
-                self.omni.heads = nn.ModuleDict()
-                self.omni.heads['video'] = nn.Sequential(nn.Dropout(p=0.5, inplace=False), nn.Linear(1024, 3806))
-            elif cfg.MODEL.ARCH == 'omnivore_swinB_epic':
-                pass
+            if cfg.MODEL.ARCH == 'omnivore_swinB_imagenet21k_288':
+                self.omni = omnivore_swinB_imagenet21k_288()
+            elif cfg.MODEL.ARCH == 'omnivore_swinB_imagenet21k_320':
+                self.omni = omnivore_swinB_imagenet21k_320()
             else:
                 print("No such architecture")
                 sys.exit(1)
@@ -445,7 +444,8 @@ class Omnivore(nn.Module):
             #verb, noun = self._omnioutput2verbnoun(y_hardmax) 
             return [verb, noun]
         else:
-            y = self.omni(x, input_type="video")
+            #y = self.omni(x, input_type="video")
+            y = self.omni(x)
             return y
 
 

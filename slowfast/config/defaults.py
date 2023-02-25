@@ -465,7 +465,7 @@ _C.SOLVER.BASE_LR = 0.1
 _C.SOLVER.LR_POLICY = "cosine"
 
 # Final learning rates for 'cosine' policy.
-_C.SOLVER.COSINE_END_LR = 0.0
+_C.SOLVER.COSINE_END_LR = 1e-6
 
 # Exponential decay factor.
 _C.SOLVER.GAMMA = 0.1
@@ -501,7 +501,7 @@ _C.SOLVER.WARMUP_FACTOR = 0.1
 _C.SOLVER.WARMUP_EPOCHS = 0.0
 
 # The start learning rate of the warm up.
-_C.SOLVER.WARMUP_START_LR = 0.01
+_C.SOLVER.WARMUP_START_LR = 0.00001
 
 # Optimization method.
 _C.SOLVER.OPTIMIZING_METHOD = "sgd"
@@ -516,8 +516,9 @@ _C.SOLVER.USE_MIXED_PRECISION = False
 _C.SOLVER.SMOOTHING = 0.0
 
 # Clip Grad
-_C.SOLVER.CLIP_GRAD = None
+_C.SOLVER.CLIP_GRAD = 5
 
+_C.SOLVER.GRAD_ACCUMULATION_ITER = 4
 
 _C.WANDB = CfgNode()
 
