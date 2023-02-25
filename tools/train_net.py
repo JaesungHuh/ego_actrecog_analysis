@@ -209,23 +209,25 @@ def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg, wan
                         )     
             else:
                 # Compute the errors.
-                num_topks_correct = metrics.topks_correct(preds, labels, (1, 5))
-                top1_err, top5_err = [
-                    (1.0 - x / preds.size(0)) * 100.0 for x in num_topks_correct
-                ]
+                # num_topks_correct = metrics.topks_correct(preds, labels, (1, 5))
+                # top1_err, top5_err = [
+                #     (1.0 - x / preds.size(0)) * 100.0 for x in num_topks_correct
+                # ]
+                top1_err = 100.0
+                top5_err = 100.0
 
                 # Gather all the predictions across all the devices.
                 if cfg.NUM_GPUS > 1:
-                    loss, top1_err, top5_err = du.all_reduce(
-                        [loss, top1_err, top5_err]
+                    loss = du.all_reduce(
+                        [loss]
                     )
-
+                loss = loss[0].item()
                 # Copy the stats from GPU to CPU (sync point).
-                loss, top1_err, top5_err = (
-                    loss.item(),
-                    top1_err.item(),
-                    top5_err.item(),
-                )
+                # loss, top1_err, top5_err = (
+                #     loss.item(),
+                #     top1_err.item(),
+                #     top5_err.item(),
+                # )
 
                 train_meter.iter_toc()
                 # Update and log stats.
@@ -234,13 +236,13 @@ def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg, wan
                 )
 
 
-                if wandb_log:
+                if cfg.WANDB.ENABLE and du.is_master_proc(
+                    cfg.NUM_GPUS * cfg.NUM_SHARDS
+                ):
                     wandb.log(
                         {
                             "Train/loss": loss,
                             "Train/lr": lr[0] if isinstance(lr, (list,)) else lr,
-                            "Train/Top1_err": top1_err,
-                            "Train/Top5_err": top5_err,
                             "train_step": data_size * cur_epoch + cur_iter,
                         },
                     )
